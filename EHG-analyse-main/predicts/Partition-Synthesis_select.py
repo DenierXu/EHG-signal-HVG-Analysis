@@ -1,16 +1,14 @@
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
 from imblearn.over_sampling import SMOTE
 import warnings
 from sklearn.svm import SVC
 from sklearn.metrics import roc_curve, auc  ###计算roc和auc
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
-from sklearn.model_selection import KFold
-from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
-
 
 # 将数据分成5份
 def list_split(items, n):
@@ -34,10 +32,11 @@ def random_list(feature_to_float, m):
     return preterm_term_list
 
 
+
 # smote算法list表示的是特征值的集合，最后一个为分类标记
 def Smote_Algorithm(lists):
-    Feature_list = np.array(lists)[:, :-1]
-    Label = np.array(lists)[:, -1]
+    Feature_list = lists[:, :-1]
+    Label = lists[:, -1]
     smo = SMOTE(random_state=1337, k_neighbors=3)
     X_smo, y_smo = smo.fit_sample(Feature_list, Label)
     list_x_smo = X_smo.tolist()
@@ -49,7 +48,7 @@ def Smote_Algorithm(lists):
 # TODO svc算法
 def pred_svc(X_train, X_test, y_train, y_test):
     # training
-    svr_rbf10 = SVC(C=1, gamma=0.0016, kernel='rbf')
+    svr_rbf10 = SVC(C=1, gamma=0.005, kernel='rbf')
     svr_rbf10.fit(X_train, y_train)
     # TODO 计算AOC面积
     y_pred = svr_rbf10.decision_function(X_test)
@@ -79,50 +78,13 @@ def pred_svc(X_train, X_test, y_train, y_test):
     return sensitivity, specificity, Gmean, F_measure, Area, Accuracy
 
 
-# 读取斜率特征
-font2 = {'family': 'Times New Roman',
-         'weight': 'normal',
-         'size': 10,
-         }
-# 读取样本熵的特征
-# 样本熵特征的维度为95
-# f = open("E:\\Time_Fre_Domain\\Feature_Merge\\Third_Channel_Fre_Sam_en_Merge.txt", 'r')
-# 读取斜率特征
-# 斜率特征的维度为56
-f_slop = open("E:\\Fre_domian\\Third_Channel_Fre_Slop_label.txt", 'r')
-# 同配系数
-f_assortativity = open("E:\\Fre_domian\\Third_Channel_Fre_assortativity_label.txt", 'r')
-# 聚类系数
-f_clustering = open("E:\\Fre_domian\\Third_Channel_Fre_clustering_label.txt", 'r')
-
-# 读取斜率数据
-lines_slop = f_slop.readlines()
-L_slop = np.array([i.strip().split() for i in lines_slop])[:, 1:]
-feature_to_float_slop = []
-for each in L_slop:
-    feature_all_slop = list(map(float, each))
-    feature_to_float_slop.append(feature_all_slop)
-# 同配系数
-lines_assortativity = f_assortativity.readlines()
-L_assortativity = np.array([i.strip().split() for i in lines_assortativity])[:, 1:]
-feature_to_float_assortativity = []
-for each in L_assortativity:
-    feature_all_assortativity =list(map(float, each))
-    feature_to_float_assortativity.append(feature_all_assortativity)
-# 聚类系数
-lines_clustering = f_clustering.readlines()
-L_clustering = np.array([i.strip().split() for i in lines_clustering])[:, 1:]
-feature_to_float_clustering = []
-for each in L_clustering:
-    feature_all_clustering = list(map(float, each))
-    feature_to_float_clustering.append(feature_all_clustering)
-Graph_features = np.hstack(
-    (np.hstack((np.array(feature_to_float_slop)[:, :-1],
-                np.array(feature_to_float_assortativity)[:, :-1])),
-     np.array(feature_to_float_clustering)))
-
-min_max_scaler = preprocessing.MinMaxScaler()
-a = min_max_scaler.fit_transform(np.array(Graph_features)[:, :-1])
+f = open("E:\\Fre_domian\Third_Channel_Fre_clustering_label.txt", 'r')
+lines = f.readlines()
+L = np.array([i.strip().split() for i in lines])[:, 1:]
+feature_to_float = []
+for each in L:
+    feature_all = np.abs(list(map(float, each)))
+    feature_to_float.append(feature_all)
 final_sensitivity = []
 final_specificity = []
 final_Gmean = []
@@ -130,10 +92,9 @@ final_F_measure = []
 final_Area = []
 final_Accuracy = []
 final_Accuracy = []
-for p in range(2, 453):
-    print("P:", p)
-    X_new = SelectKBest(chi2, k=p).fit_transform(a, np.array(Graph_features)[:, -1])
-    features = np.array(np.hstack((X_new, [[j] for j in np.array(feature_to_float_slop)[:, -1]])))
+for p in range(2, 151):
+    X_new = SelectKBest(chi2, k=p).fit_transform(np.array(feature_to_float)[:, :-1], np.array(feature_to_float)[:, -1])
+    features = np.array(np.hstack((X_new, [[j] for j in np.array(feature_to_float)[:, -1]])))
     list_sensitivity = []
     list_specificity = []
     list_Gmean = []
@@ -141,7 +102,7 @@ for p in range(2, 453):
     list_Area = []
     list_Accuracy = []
     kf = KFold(n_splits=5)
-    for i in range(20):
+    for i in range(200):
         sensitivity_list = []
         specificity_list = []
         Gmean_list = []
@@ -149,7 +110,7 @@ for p in range(2, 453):
         Area_list = []
         Accuracy_list = []
         np.random.shuffle(features)
-        rangdom_preterm_term = random_list(features, 5)
+        rangdom_preterm_term=random_list(features,5)
         for train_index, test_index in kf.split(rangdom_preterm_term):
             train_list = np.array(rangdom_preterm_term)[train_index]
             test_list = np.array(rangdom_preterm_term)[test_index]
@@ -187,4 +148,6 @@ for p in range(2, 453):
 print("assortativity_sensitivity=", final_sensitivity)
 print("assortativity_specificity=", final_specificity)
 print("assortativity_Gmean=", final_Gmean)
+# print("Slop_F_measure=", final_F_measure)
 print("assortativity_Area=", final_Area)
+# print("Slop_Accuracy=", final_Accuracy)
